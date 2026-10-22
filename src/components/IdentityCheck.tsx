@@ -1,0 +1,171 @@
+"use client";
+
+import { ArrowRight, Fingerprint, Info, LoaderCircle, Plus } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
+import { FormError } from "@/components/Field";
+import { IdentityFields, emptyIdentity, toIdentity, type IdentityValues } from "@/components/IdentityFields";
+import { CoachNote } from "@/components/PortalHero";
+import { Turnstile, type TurnstileHandle } from "@/components/Turnstile";
+import { useT } from "@/components/LangProvider";
+import { PageTitle, StickyActions } from "@/components/Page";
+import { Button } from "@/components/ui/button";
+import { saveCheckedIdentity, type Role } from "@/lib/registration-state";
+import { identitySchema, type Identity } from "@/lib/validation";
+
+type Existing = {
+  slaaId: string;
+  maskedName: string;
+  district: string;
+  roles?: { athlete: boolean; coach: boolean };
+};
+
+/** Step 1 of each portal: make sure this person does not already have an SLA ID. */
+export function IdentityCheck({ role }: { role: Role }) {
+  const router = useRouter();
+  const { t, district, path } = useT();
+  const [values, setValues] = useState<IdentityValues>(emptyIdentity);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [existing, setExisting] = useState<(Existing & { identity: Identity }) | null>(null);
+  const turnstile = useRef<TurnstileHandle>(null);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setFormError(null);
+    const parsed = identitySchema.safeParse(toIdentity(values));
+    if (!parsed.success) {
+      const errs: Record<string, string> = {};
+      for (const i of parsed.error.issues) errs[String(i.path[0])] ??= i.message;
+      setErrors(errs);
+      return;
+    }
+    setErrors({});
+    setBusy(true);
+    let requestTimer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const token = (await turnstile.current?.getToken()) ?? "";
+      if (!token) {
+        setFormError(t("securityHint"));
+        return;
+      }
+      const controller = new AbortController();
+      requestTimer = setTimeout(() => controller.abort(), 30000);
+      const res = await fetch("/api/identity-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identity: parsed.data, turnstileToken: token }),
+        signal: controller.signal,
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setFormError(body.error ?? t("serverError"));
+        return;
+      }
+      if (body.exists) {
+        setExisting({ ...body, identity: parsed.data });
+        return;
+      }
+      saveCheckedIdentity({ identity: parsed.data, role });
+      router.push(path(`/register/${role}/details`));
+    } catch {
+      setFormError(t("networkError"));
+    } finally {
+      clearTimeout(requestTimer);
+      setBusy(false);
+      turnstile.current?.reset();
+    }
+  }
+
+  if (existing && role === "coach" && existing.roles?.athlete && !existing.roles.coach) {
+    // One SLA ID for life: an athlete who also coaches adds the coach role to the same ID.
+    const addRole = () => {
+      saveCheckedIdentity({
+        identity: existing.identity,
+        role,
+        existing: { slaaId: existing.slaaId, maskedName: existing.maskedName, district: existing.district },
+      });
+      router.push(path("/register/coach/details"));
+    };
+    return (
+      <div className="mx-auto flex w-full max-w-xl flex-col gap-6" data-testid="add-coach-role">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <span className="grid size-14 place-items-center rounded-2xl bg-emerald-100 text-emerald-700">
+            <Fingerprint className="size-7" aria-hidden />
+          </span>
+          <h1 className="text-2xl font-bold sm:text-3xl">{t("addRoleTitle")}</h1>
+        </div>
+        <div className="form-anchor rounded-2xl border bg-background p-6 text-center shadow-sm">
+          <p className="text-sm text-muted-foreground">{t("alreadyYourId")}</p>
+          <p className="mt-1 font-mono text-3xl font-bold tracking-wider break-all sm:text-4xl">{existing.slaaId}</p>
+          <p className="mt-3 text-sm">
+            {existing.maskedName} · {district(existing.district)}
+          </p>
+        </div>
+        <p className="text-center text-sm text-muted-foreground text-pretty">{t("addRoleText")}</p>
+        <Button onClick={addRole}
+          className="h-auto min-h-12 w-full gap-2 rounded-xl bg-gold py-2 text-base font-bold whitespace-normal text-[var(--coach-night)] hover:bg-gold/90 sm:text-lg">
+          <Plus className="size-5" aria-hidden /> {t("addRoleButton")}
+        </Button>
+        <Button nativeButton={false} render={<Link href={path("/coach")} />} variant="outline"
+          className="h-auto min-h-12 w-full rounded-xl text-base whitespace-normal">
+          {t("backToStart")}
+        </Button>
+      </div>
+    );
+  }
+
+  if (existing) {
+    // An athlete record cannot be started from a coach ID here; staff add it.
+    const otherRole =
+      role === "athlete" && existing.roles?.coach && !existing.roles.athlete ? t("alreadyHasCoachRole") : null;
+    return (
+      <div className="mx-auto flex w-full max-w-xl flex-col gap-6" data-testid="already-registered">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <span className="grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary">
+            <Info className="size-7" aria-hidden />
+          </span>
+          <h1 className="text-2xl font-bold sm:text-3xl">{t("alreadyTitle")}</h1>
+        </div>
+        <div className="rounded-2xl border-2 border-primary/30 bg-background p-6 text-center shadow-sm">
+          <p className="text-sm text-muted-foreground">{t("alreadyYourId")}</p>
+          <p className="mt-1 font-mono text-3xl font-bold tracking-wider break-all sm:text-4xl">{existing.slaaId}</p>
+          <p className="mt-3 text-sm">
+            {existing.maskedName} · {district(existing.district)}
+          </p>
+        </div>
+        <p className="text-center text-sm text-muted-foreground text-pretty">{otherRole ?? t("alreadyText")}</p>
+        <Button nativeButton={false} render={<Link href={path("/")} />} variant="outline"
+          className="h-auto min-h-12 w-full rounded-xl text-base whitespace-normal sm:w-auto sm:self-center sm:px-8">
+          {t("backToStart")}
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-6" noValidate>
+      <PageTitle title={t("checkTitle")} intro={role === "coach" ? t("checkIntroCoach") : t("checkIntro")}
+        kicker={role === "coach" ? t("coachCredential") : undefined} />
+
+      <div className="form-anchor rounded-2xl border bg-background p-4 shadow-xs sm:p-6">
+        <IdentityFields value={values} onChange={setValues} errors={errors} types={role === "coach" ? ["nic"] : undefined} />
+      </div>
+
+      <FormError message={formError} />
+      <Turnstile ref={turnstile} />
+
+      <StickyActions>
+        <Button type="submit" disabled={busy}
+          className="h-auto min-h-12 w-full gap-2 rounded-xl py-2 text-base whitespace-normal sm:min-h-13 sm:text-lg">
+          {busy ? <LoaderCircle className="size-5 animate-spin" aria-hidden /> : null}
+          {busy ? t("checking") : t("continue")}
+          {!busy && <ArrowRight className="size-5" aria-hidden />}
+        </Button>
+      </StickyActions>
+      {role === "athlete" && <CoachNote />}
+    </form>
+  );
+}
