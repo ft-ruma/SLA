@@ -10,3 +10,4 @@ playwright-report
 import_errors.csv
 import_warnings.csv
 *.tsbuildinfo
+website
