@@ -14,7 +14,7 @@ const NAV = [
   ["/admin/duplicates", "Possible duplicates"],
   ["/admin/coach-requests", "Coach requests"],
   ["/admin/confirmations", "Coach confirmations"],
-  ["/admin/coaches", "Add / import coaches"],
+  ["/admin/coaches", "Coaches"],
   ["/admin/audit", "Audit log"],
   ["/admin/exports", "Exports"],
   ["/admin/staff", "Staff"],

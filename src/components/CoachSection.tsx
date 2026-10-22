@@ -9,6 +9,9 @@ import { cn } from "@/lib/utils";
 import { DistrictSelect } from "./DistrictSelect";
 import { Field, inputClass, selectClass } from "./Field";
 import { useT } from "./LangProvider";
+import { EVENTS } from "@/lib/reference";
+
+const eventName = (c: string) => EVENTS.find((e) => e.code === c)?.name ?? c;
 
 // The coach part of the athlete form, as two plain questions:
 //   1. Who coaches you now?      (the first one is the main coach)
@@ -37,11 +40,37 @@ export type UnlistedCoachRow = {
   endYear: string | number;
 };
 
-type Result = { slaaId: string; name: string; district: string };
+type Result = {
+  slaaId: string;
+  name: string;
+  district: string;
+  licenseNo?: string | null;
+  licenseLevel?: string | null;
+  disciplines?: string[];
+};
 
 export type Entry =
-  | { kind: "listed"; key: string; coachId: string; name: string; district: string; startYear: string; endYear: string }
-  | { kind: "new"; key: string; name: string; phone: string; district: string; startYear: string; endYear: string };
+  | {
+      kind: "listed";
+      key: string;
+      coachId: string;
+      name: string;
+      district: string;
+      licenseNo?: string | null;
+      licenseLevel?: string | null;
+      disciplines?: string[];
+      startYear: string;
+      endYear: string;
+    }
+  | {
+      kind: "new";
+      key: string;
+      name: string;
+      phone: string;
+      district: string;
+      startYear: string;
+      endYear: string;
+    };
 
 const MAX_CURRENT = 3;
 const MAX_PAST = 5;
@@ -144,7 +173,18 @@ export function CoachSection({
     const entry: Entry =
       "newName" in r
         ? { kind: "new", key: newKey(), name: r.newName, phone: "", district: athleteDistrict ?? "", startYear: "", endYear: "" }
-        : { kind: "listed", key: newKey(), coachId: r.slaaId, name: r.name, district: r.district, startYear: "", endYear: "" };
+        : {
+            kind: "listed",
+            key: newKey(),
+            coachId: r.slaaId,
+            name: r.name,
+            district: r.district,
+            licenseNo: r.licenseNo,
+            licenseLevel: r.licenseLevel,
+            disciplines: r.disciplines,
+            startYear: "",
+            endYear: "",
+          };
     if (list === "current") {
       setCurrent((c) => [...c, entry]);
       setAddingCurrent(false);
@@ -365,6 +405,14 @@ function CoachFinder({
                       <span className="block truncate font-medium">{r.name}</span>
                       <span className="block text-xs text-muted-foreground">
                         {district(r.district)} · <span className="font-mono">{r.slaaId}</span>
+                        {(r.licenseLevel || r.licenseNo) && (
+                          <span>
+                            {" · "}
+                            {[r.licenseLevel, r.licenseNo ? `#${r.licenseNo}` : null]
+                              .filter(Boolean)
+                              .join(" ")}
+                          </span>
+                        )}
                       </span>
                     </span>
                   </button>
@@ -445,9 +493,39 @@ function CoachCard({
               {isNew ? (
                 <span className="text-amber-800">{t("newCoachBadge")}</span>
               ) : (
-                <>{district(entry.district)} · <span className="font-mono">{entry.coachId}</span></>
+                <>
+                  {district(entry.district)} · <span className="font-mono">{entry.coachId}</span>
+                  {(entry.licenseLevel || entry.licenseNo) && (
+                    <span className="text-foreground font-medium">
+                      {" · "}
+                      {[
+                        entry.licenseLevel,
+                        entry.licenseNo ? `#${entry.licenseNo}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                    </span>
+                  )}
+                </>
               )}
             </p>
+            {entry.kind === "listed" && entry.disciplines && entry.disciplines.length > 0 && (
+              <div className="mt-1 flex flex-wrap gap-1">
+                {entry.disciplines.slice(0, 4).map((d) => (
+                  <span
+                    key={d}
+                    className="inline-block rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
+                  >
+                    {eventName(d)}
+                  </span>
+                ))}
+                {entry.disciplines.length > 4 && (
+                  <span className="text-[10px] text-muted-foreground">
+                    +{entry.disciplines.length - 4} more
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
         <Button type="button" variant="ghost" size="sm" className="h-9 shrink-0 gap-1 text-muted-foreground" onClick={onRemove}>

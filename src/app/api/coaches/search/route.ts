@@ -37,13 +37,23 @@ export async function GET(req: Request) {
     const like = "%" + q.replace(/[\\%_]/g, (c) => "\\" + c) + "%";
     const only = district || (suggest ? near : "");
     const rank = district || near;
-    const rows = await sql<{ slaa_id: string; name_with_initials: string | null; full_name: string; district: string }[]>`
-      SELECT m.slaa_id, m.name_with_initials, m.full_name, m.district
+    const rows = await sql<{
+      slaa_id: string;
+      name_with_initials: string | null;
+      full_name: string;
+      district: string;
+      slaa_license_no: string | null;
+      license_level: string | null;
+      disciplines: string[];
+    }[]>`
+      SELECT m.slaa_id, m.name_with_initials, m.full_name, m.district,
+             c.slaa_license_no, c.license_level, COALESCE(c.disciplines, '{}') AS disciplines
       FROM coach c JOIN member m USING (slaa_id)
       WHERE m.status IN ('pending', 'verified')
         AND (${suggest ? true : false}
              OR m.name_with_initials ILIKE ${like} OR m.full_name ILIKE ${like}
-             OR m.slaa_id ILIKE ${q.toUpperCase() + "%"})
+             OR m.slaa_id ILIKE ${q.toUpperCase() + "%"}
+             OR c.slaa_license_no ILIKE ${like})
         AND (${only} = '' OR m.district = ${only})
       ORDER BY (m.district = ${rank}) DESC, m.name_with_initials NULLS LAST, m.slaa_id
       LIMIT ${suggest ? 8 : 20}`;
@@ -53,6 +63,9 @@ export async function GET(req: Request) {
         slaaId: r.slaa_id,
         name: r.name_with_initials || initialsName(r.full_name),
         district: r.district,
+        licenseNo: r.slaa_license_no,
+        licenseLevel: r.license_level,
+        disciplines: r.disciplines ?? [],
       })),
     });
   } catch (e) {
