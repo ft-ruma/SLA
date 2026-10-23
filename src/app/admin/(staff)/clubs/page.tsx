@@ -42,7 +42,7 @@ export default async function ClubsPage({ searchParams }: { searchParams: Promis
         </nav>
       </div>
       <p className="text-sm text-muted-foreground">
-        Clubs registered through the club portal. Call the secretary to check the details, then verify. Verified
+        Clubs already on the register. Call the secretary to check the details, then verify. Verified
         civil and institutional clubs appear in the athlete form; armed forces and police are always listed.
       </p>
 
@@ -85,7 +85,7 @@ export default async function ClubsPage({ searchParams }: { searchParams: Promis
 
       <h2 className="mt-4 text-lg font-semibold">Clubs typed by athletes</h2>
       <p className="text-sm text-muted-foreground">
-        Athletes chose “A club that is not in the list”. Ask these clubs to register through the club portal.
+        Athletes chose “A club that is not in the list”. These names are not on the verified club list.
       </p>
       {unlisted.length ? (
         <table className="w-full rounded-lg border bg-background text-sm">

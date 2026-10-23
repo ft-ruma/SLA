@@ -24,8 +24,6 @@ const SOURCES = [
   "src/app/api/coaches/search/route.ts",
   "src/app/api/register/coach/route.ts",
   "src/app/api/register/coach/upload/route.ts",
-  "src/app/api/register/club/route.ts",
-  "src/app/[lang]/register/club/ClubRegistration.tsx",
   "src/app/[lang]/register/athlete/details/AthleteRegistration.tsx",
   "src/app/[lang]/register/coach/details/CoachRegistration.tsx",
   "src/components/coach/QualificationRows.tsx",

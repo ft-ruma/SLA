@@ -444,37 +444,6 @@ export const coachRegisterSchema = z.preprocess(
   ]),
 );
 
-// ---------------------------------------------------------------------------
-// Club (separate portal; registers an organisation, not a person)
-// ---------------------------------------------------------------------------
-
-// Armed forces and police are not registered here; athletes pick them from a fixed list.
-export const CLUB_TYPES = ["UNIVERSITY", "SCHOOL", "CIVIL_CLUB", "INSTITUTIONAL"] as const;
-
-export const clubFormSchema = z
-  .object({
-    name: requiredText("Club name", 150).refine((v) => cleanText(v).length >= 3, { error: "Club name is too short." }),
-    category: z.enum(CLUB_TYPES, { error: "Choose the type of club." }),
-    affiliationNumber: z.string().trim().max(40, { error: "Affiliation number is too long." }),
-    district: z.enum(DISTRICTS, { error: "Select a district." }),
-    presidentName: requiredText("President's name"),
-    presidentNic: z.union([z.literal(""), nicField]),
-    presidentPhone: phoneField,
-    secretaryName: requiredText("Secretary's name"),
-    secretaryNic: nicField,
-    secretaryPhone: phoneField,
-    email: z.string().trim().max(200).refine((v) => EMAIL_REGEX.test(v), { error: "Enter a valid email address." }),
-    consent: z.literal(true, { error: "You must agree to continue." }),
-  });
-
-export type ClubForm = z.infer<typeof clubFormSchema>;
-
-export const clubRegisterSchema = z.object({
-  form: clubFormSchema,
-  turnstileToken: turnstileField,
-  lang: langField,
-});
-
 export const identityCheckSchema = z.object({
   identity: identitySchema,
   turnstileToken: z.string().min(1, { error: "Please complete the security check." }),

@@ -188,28 +188,3 @@ test("an athlete adds the coach role to the same SLA ID", async ({ page }) => {
   await page.goto(`/en/verify?id=${id}`);
   await expect(page.getByTestId("role-badge")).toHaveText("[A | C]");
 });
-
-test("a club registers on its own portal", async ({ page }) => {
-  await page.goto("/en/register/club");
-  await expect(page.locator('[data-portal="club"]')).toBeVisible();
-  // no athlete or coach form on this page: no personal identity check, no events
-  await expect(page.locator('[data-portal="athlete"], [data-portal="coach"]')).toHaveCount(0);
-  await expect(page.getByTestId("nic-decoded")).toHaveCount(0);
-  await expect(page.getByLabel("Event 1")).toHaveCount(0);
-
-  await page.getByLabel("Official name of the club").fill("Galle Sprinters Club");
-  await page.locator("#category label", { hasText: "Civil athletics club" }).click();
-  await page.getByLabel("District", { exact: true }).selectOption("Galle");
-  await page.locator("#presidentName").fill("Nuwan Perera");
-  await page.locator("#presidentPhone").fill("0771112233");
-  await page.locator("#secretaryName").fill("Ishara Silva");
-  await page.locator("#secretaryNic").fill("199012345678");
-  await page.locator("#secretaryPhone").fill("0712221100");
-  await page.getByLabel("Club email").fill("sprinters@example.com");
-  await page.getByText(/I confirm these details are true/).click();
-  await page.getByRole("button", { name: "Register the club" }).click();
-
-  await expect(page).toHaveURL(/\/en\/register\/club\/done$/);
-  await expect(page.getByTestId("club-id")).toHaveText(/^CLB-GAL-\d{4}$/);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
-});

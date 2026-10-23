@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardList, Flag, Medal, Menu, Search, X } from "lucide-react";
+import { ClipboardList, Medal, Menu, Search, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -9,8 +9,8 @@ import { cn } from "@/lib/utils";
 import { useT } from "./LangProvider";
 
 /**
- * Public header links: athlete registration, the coach portal, club
- * registration and the SLA ID check, each to its own page. Hidden on the language screen and in admin.
+ * Public header links: athlete registration, the coach portal and the SLA ID
+ * check, each to its own page. Hidden on the language screen and in admin.
  */
 export function SiteNav() {
   const { t, path } = useT();
@@ -24,7 +24,6 @@ export function SiteNav() {
     { href: "/register/athlete", label: t("navAthleteReg"), icon: <Medal />, active: rest.startsWith("/register/athlete") },
     { href: "/coach", label: t("navCoachPortal"), icon: <ClipboardList />,
       active: rest.startsWith("/coach") || rest.startsWith("/register/coach") },
-    { href: "/register/club", label: t("navClubs"), icon: <Flag />, active: rest.startsWith("/register/club") },
     { href: "/verify", label: t("navVerify"), icon: <Search />, active: rest.startsWith("/verify") },
   ];
   return (
